@@ -20,7 +20,8 @@ def get_response(data):
         data += ch
         if ch == '\r':
             hour = datetime.datetime.now().strftime("%H:%M")
-            prints(hour, user_name, data)
+            if data != "quit\r":
+                prints(hour, user_name, data)
             return True, hour+data
     return False, data
 
@@ -37,12 +38,16 @@ def get_pkt(msg):
 
 def print_pkt(data):# format: 0003 asd 0008 16:02 ffg
     user_len = int(data[:4])
-    user = data[4:user_len+4]
-    len = int(data[user_len+4:user_len + 8])
-    msg = data[user_len + 8:user_len + 8 + len]
-    hour = msg[:5]
-    msg = msg[5:]
-    prints(hour, user, msg)
+    if user_len + 4 == len(data):# server:0044 msg
+        msg = data[4:user_len+4]
+        print(msg)
+    else:
+        user = data[4:user_len+4]
+        len1 = int(data[user_len+4:user_len + 8])
+        msg = data[user_len + 8:user_len + 8 + len1]
+        hour = msg[:5]
+        msg = msg[5:]
+        prints(hour, user, msg)
 
 
 def main():
@@ -52,7 +57,8 @@ def main():
     global user_name
     user_name = get_name()
     msg = ''
-    while True:
+    is_quit = True
+    while is_quit:
         rlist, wlist, xlist = select.select([my_socket], [my_socket], [])
         if my_socket in rlist:
             data = my_socket.recv(1024).decode()
@@ -61,6 +67,9 @@ def main():
             for msg1 in message_to_send:
                 my_socket.send(get_pkt(msg1))
                 message_to_send.remove(msg1)
+                if msg1[5:] == "quit\r":
+                    is_quit = False
+                    break
         flag, data = get_response(msg)
         if flag:
             message_to_send.append(data)
