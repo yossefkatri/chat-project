@@ -34,12 +34,12 @@ def get_name():
     return p.encode()
 
 
-def get_pkt(msg):
+def get_pkt(msg): #TODO packet with opcode
     p = str(len(user_name)).zfill(4) + user_name + str(len(msg)).zfill(4) + msg
     return p.encode()
 
 
-def print_pkt(data):  # format: 0003 asd 0008 16:02 ffg
+def print_pkt(data):  # format: 0003 asd 0008 16:02 ffg  #TODO how to print pkt with opcode and ignore some opcodes
     user_len = int(data[:4])
     if user_len + 4 == len(data):  # server:0044 msg
         msg = data[4:user_len+4]
@@ -74,6 +74,7 @@ def main():
                 if msg1[5:] == "quit\r":
                     is_quit = False
                     break
+                #TODO if the msg is "kick {username}"  i should send msg to kick him.(wheather or not the user is a manager)
         flag, data = get_response(msg)
         if flag:
             message_to_send.append(data)

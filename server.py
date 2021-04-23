@@ -24,7 +24,7 @@ def send_waiting_messages(wlist):
             messages_to_send.remove(message)
 
 
-def exstract_msg(data):
+def exstract_msg(data):  # TODO handle with opcode
     user_len = int(data[:4])
     user = data[4:user_len + 4]
     len = int(data[user_len + 4:user_len + 8])
@@ -87,7 +87,10 @@ def main():
                 open_client_sockets.append(new_socket)
                 print("connection establish")
             else:
-                data = current_socket.recv(1024).decode()
+                try:
+                    data = current_socket.recv(1024).decode()
+                except:
+                    data = ""
                 if data == "":
                     open_client_sockets.remove(current_socket)
                     user, ok = get_user(current_socket)
@@ -102,7 +105,7 @@ def main():
                     user, msg = exstract_msg(data)
                     if msg == "quit\r":
                         data = quit_user(current_socket, user)
-                    elif user in managers:
+                    elif user in managers:  # TODO: check if he wants to kick someone from the chat
                         pass
                     send_to_sockets(current_socket, open_client_sockets, data)
         send_waiting_messages(wlist)
