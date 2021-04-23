@@ -27,8 +27,11 @@ def get_response(data):
 
 
 def get_name():
+    global user_name
     name = input("enter user-name:")
-    return name
+    p = str(len(name)).zfill(4)+name
+    user_name = name
+    return p.encode()
 
 
 def get_pkt(msg):
@@ -36,9 +39,9 @@ def get_pkt(msg):
     return p.encode()
 
 
-def print_pkt(data):# format: 0003 asd 0008 16:02 ffg
+def print_pkt(data):  # format: 0003 asd 0008 16:02 ffg
     user_len = int(data[:4])
-    if user_len + 4 == len(data):# server:0044 msg
+    if user_len + 4 == len(data):  # server:0044 msg
         msg = data[4:user_len+4]
         print(msg)
     else:
@@ -55,7 +58,8 @@ def main():
     my_socket.connect((IP_SERVER, PORT_SERVER))
     print(" welcome to the chat!!")
     global user_name
-    user_name = get_name()
+    p = get_name()
+    my_socket.send(p)
     msg = ''
     is_quit = True
     while is_quit:
