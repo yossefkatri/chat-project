@@ -34,23 +34,25 @@ def get_name():
     return p.encode()
 
 
-def get_pkt(msg): #TODO packet with opcode
-    p = str(len(user_name)).zfill(4) + user_name + str(len(msg)).zfill(4) + msg
+def get_pkt(msg): #regular message
+    p = str(len(user_name)).zfill(4) + user_name + str(1) + str(len(msg)).zfill(4) + msg
     return p.encode()
 
 
-def print_pkt(data):  # format: 0003 asd 0008 16:02 ffg  #TODO how to print pkt with opcode and ignore some opcodes
+def print_pkt(data):  # format: 0003 asd 0008 16:02 ffg
     user_len = int(data[:4])
     if user_len + 4 == len(data):  # server:0044 msg
         msg = data[4:user_len+4]
         print(msg)
     else:
         user = data[4:user_len+4]
-        len1 = int(data[user_len+4:user_len + 8])
-        msg = data[user_len + 8:user_len + 8 + len1]
-        hour = msg[:5]
-        msg = msg[5:]
-        prints(hour, user, msg)
+        opcode = int(data[user_len+4:user_len+5])
+        if opcode == 1:
+            len1 = int(data[user_len+5:user_len + 9])
+            msg = data[user_len + 9:user_len + 9 + len1]
+            hour = msg[:5]
+            msg = msg[5:]
+            prints(hour, user, msg)
 
 
 def main():
@@ -69,12 +71,12 @@ def main():
             print_pkt(data)
         if my_socket in wlist:
             for msg1 in message_to_send:
+                #TODO if the msg is "kick {username}"  i should send msg to kick him.(wheather or not the user is a manager)
                 my_socket.send(get_pkt(msg1))
                 message_to_send.remove(msg1)
                 if msg1[5:] == "quit\r":
                     is_quit = False
                     break
-                #TODO if the msg is "kick {username}"  i should send msg to kick him.(wheather or not the user is a manager)
         flag, data = get_response(msg)
         if flag:
             message_to_send.append(data)

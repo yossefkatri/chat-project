@@ -24,13 +24,17 @@ def send_waiting_messages(wlist):
             messages_to_send.remove(message)
 
 
-def exstract_msg(data):  # TODO handle with opcode
+def exstract_msg(data):  # TODO handle with opcodes especially 3
     user_len = int(data[:4])
     user = data[4:user_len + 4]
-    len = int(data[user_len + 4:user_len + 8])
-    msg = data[user_len + 8:user_len + 8 + len]
-    msg = msg[5:]
-    return user, msg
+    opcode = int(data[user_len+4:user_len+5])
+    if opcode == 1:
+        len = int(data[user_len + 5:user_len + 9])
+        msg = data[user_len + 9:user_len + 9 + len]
+        msg = msg[5:]
+        return 1, user, msg
+    if opcode == 3:
+        pass
 
 
 def get_pkt(msg):
@@ -91,7 +95,7 @@ def main():
                     data = current_socket.recv(1024).decode()
                 except:
                     data = ""
-                if data == "":
+                if data == "":  # close the connection with the socket
                     open_client_sockets.remove(current_socket)
                     user, ok = get_user(current_socket)
                     if ok:  # we found the socket
@@ -102,7 +106,7 @@ def main():
                 elif only_user(data):  # format:0004asdf, to match between user and socket
                     users.append((exstract_user(data), current_socket))
                 else:
-                    user, msg = exstract_msg(data)
+                    opcode ,user, msg = exstract_msg(data)
                     if msg == "quit\r":
                         data = quit_user(current_socket, user)
                     elif user in managers:  # TODO: check if he wants to kick someone from the chat
