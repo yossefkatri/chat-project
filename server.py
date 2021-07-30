@@ -24,17 +24,27 @@ def send_waiting_messages(wlist):
             messages_to_send.remove(message)
 
 
-def exstract_msg(data):  # TODO handle with opcodes especially 3
+def exstract_msg(data):
+    """
+    exstract the info you need from the packet including opcode
+
+    :param data: the packet
+
+    :return: opcode, sender, more info depends on opcode
+
+    """
     user_len = int(data[:4])
-    user = data[4:user_len + 4]
+    sender = data[4:user_len + 4]
     opcode = int(data[user_len+4:user_len+5])
     if opcode == 1:
         len = int(data[user_len + 5:user_len + 9])
         msg = data[user_len + 9:user_len + 9 + len]
         msg = msg[5:]
-        return 1, user, msg
+        return 1, sender, msg
     if opcode == 3:
-        pass
+        len = int(data[user_len + 5:user_len + 9])
+        user = data[user_len + 9:user_len + 9 + len]
+        return 3, sender, user
 
 
 def get_pkt(msg):
@@ -59,16 +69,37 @@ def get_user(current_socket):
     return False, False
 
 
-def quit_user(current_socket, user):
-    data = get_pkt(user + " has left the chat!")
-    open_client_sockets.remove(current_socket)
-    users.remove((user, current_socket))
-    current_socket.close()
-    print("Connection with " + user + " closed")
-    return data
+def quit_user(current_socket, user, op):
+    """
+    the function kick the user from the chat depends on opcode.
+
+    :param current_socket: the socket of the user to be kicked
+    :param user: the user name to be kicked
+    :param op: opcode
+    :return: the message that the server should send
+    """
+    if op == 1:
+        data = get_pkt(user + " has left the chat!")
+        open_client_sockets.remove(current_socket)
+        users.remove((user, current_socket))
+        current_socket.close()
+        print("Connection with " + user + " closed")
+        return data
+    elif op == 3:
+        data = get_pkt(user + "has been kicked from the chat!")
+        open_client_sockets.remove(current_socket)
+        users.remove((user, current_socket))
+        current_socket.close()
+        print("Connection with " + user + " closed")
+        return data
 
 
 def only_user(data):
+    """
+    check if the message is contained only the name of the user
+    :param data: the message
+    :return: true or false
+    """
     user_len = int(data[:4])
     return user_len + 4 == len(data)
 
@@ -76,6 +107,21 @@ def only_user(data):
 def exstract_user(data):
     user_len = int(data[:4])
     return data[4:user_len + 4]
+
+
+def get_regular_msg(sender, msg):
+    """
+        turn uniqe msg to regular one
+
+        :param sender: the sender message
+        :param msg: the user he try yo kick
+        :param hour: the clock
+        :return: the encoded regular message
+        """
+    time = datetime.datetime.now().strftime("%H:%M")
+    msg = time + "kick " + msg
+    p = str(len(sender)).zfill(4) + sender + str(1) + str(len(msg)).zfill(4) + msg
+    return p
 
 
 def main():
@@ -106,11 +152,17 @@ def main():
                 elif only_user(data):  # format:0004asdf, to match between user and socket
                     users.append((exstract_user(data), current_socket))
                 else:
-                    opcode ,user, msg = exstract_msg(data)
-                    if msg == "quit\r":
-                        data = quit_user(current_socket, user)
-                    elif user in managers:  # TODO: check if he wants to kick someone from the chat
-                        pass
+                    opcode, user, msg = exstract_msg(data)
+                    if msg == "quit\r" and opcode == 1:
+                        data = quit_user(current_socket, user, opcode)
+                    elif opcode == 3:
+                        msg = msg[:-1]
+                        soc, check = get_socket(msg) #msg == user he wants to kick is real.
+                        if user in managers and check:
+                            data = quit_user(soc, msg, opcode) #kick the user
+                        else:
+                            data = get_regular_msg(user, msg)
+                            current_socket = -1  #to send everybody including the sender
                     send_to_sockets(current_socket, open_client_sockets, data)
         send_waiting_messages(wlist)
 

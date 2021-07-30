@@ -20,7 +20,7 @@ def get_response(data):
         data += ch
         if ch == '\r':
             hour = datetime.datetime.now().strftime("%H:%M")
-            if data != "quit\r":
+            if data != "quit\r" and data[:5] != "kick ":
                 prints(hour, user_name, data)
             return True, hour+data
     return False, data
@@ -34,9 +34,14 @@ def get_name():
     return p.encode()
 
 
-def get_pkt(msg): #regular message
-    p = str(len(user_name)).zfill(4) + user_name + str(1) + str(len(msg)).zfill(4) + msg
-    return p.encode()
+def get_pkt(msg, op): #support opcode 1,3
+    if op == 1:
+        p = str(len(user_name)).zfill(4) + user_name + str(op) + str(len(msg)).zfill(4) + msg
+        return p.encode()
+    elif op == 3:
+        user = msg[10:]
+        p = str(len(user_name)).zfill(4) + user_name + str(op) + str(len(user)).zfill(4) + user
+        return p.encode()
 
 
 def print_pkt(data):  # format: 0003 asd 0008 16:02 ffg
@@ -71,8 +76,10 @@ def main():
             print_pkt(data)
         if my_socket in wlist:
             for msg1 in message_to_send:
-                #TODO if the msg is "kick {username}"  i should send msg to kick him.(wheather or not the user is a manager)
-                my_socket.send(get_pkt(msg1))
+                opcode = 1
+                if msg1[5:10] == "kick ":
+                    opcode = 3
+                my_socket.send(get_pkt(msg1, opcode))
                 message_to_send.remove(msg1)
                 if msg1[5:] == "quit\r":
                     is_quit = False
