@@ -19,9 +19,9 @@ def get_response(data):
         ch = msvcrt.getch().decode()
         data += ch
         if ch == '\r':
-            hour = datetime.datetime.now().strftime("%H:%M")
+            hour = datetime.datetime.now().strftime("%H:%M")  # without space between the time and the msg
             if data != "quit\r":
-                prints(hour, user_name, data)
+                prints(hour, "you", data)
             return True, hour+data
     return False, data
 

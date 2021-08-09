@@ -39,7 +39,6 @@ def exstract_msg(data):
     if opcode == 1:
         len = int(data[user_len + 5:user_len + 9])
         msg = data[user_len + 9:user_len + 9 + len]
-        msg = msg[5:]
         return 1, sender, msg
     if opcode == 3:
         len = int(data[user_len + 5:user_len + 9])
@@ -123,6 +122,18 @@ def get_regular_msg(sender, msg):
     p = str(len(sender)).zfill(4) + sender + str(1) + str(len(msg)).zfill(4) + msg
     return p
 
+def mannger_msg(mannger, msg, time):
+    """
+    put into the user name the '@' character.
+    :param mannger: the sender name
+    :param msg: the msg he try to send
+    :return: the packet to be sended
+    """
+    user = "@" + mannger
+    msg = time + msg
+    p = str(len(user)).zfill(4) + user + str(1) + str(len(msg)).zfill(4) + msg
+    return p
+
 
 def main():
     server_socket = socket.socket()
@@ -155,8 +166,12 @@ def main():
                     users.append((user, current_socket))
                 else:
                     opcode, user, msg = exstract_msg(data)
+                    time = msg[:5]
+                    msg = msg[5:]
                     if msg == "quit\r" and opcode == 1:
                         data = quit_user(current_socket, user, opcode)
+                    elif opcode == 1 and user in managers:
+                        data = mannger_msg(user, msg, time)
                     elif opcode == 3:
                         msg = msg[:-1]
                         soc, check = get_socket(msg)  # msg == user he wants to kick is real.
