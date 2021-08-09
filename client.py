@@ -20,7 +20,7 @@ def get_response(data):
         data += ch
         if ch == '\r':
             hour = datetime.datetime.now().strftime("%H:%M")
-            if data != "quit\r" and data[:5] != "kick ":
+            if data != "quit\r":
                 prints(hour, user_name, data)
             return True, hour+data
     return False, data
@@ -73,6 +73,10 @@ def main():
         rlist, wlist, xlist = select.select([my_socket], [my_socket], [])
         if my_socket in rlist:
             data = my_socket.recv(1024).decode()
+            if data == "":
+                print("you have been kicked from the chat!")
+                is_quit = False
+                break
             print_pkt(data)
         if my_socket in wlist:
             for msg1 in message_to_send:

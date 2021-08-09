@@ -86,7 +86,7 @@ def quit_user(current_socket, user, op):
         print("Connection with " + user + " closed")
         return data
     elif op == 3:
-        data = get_pkt(user + "has been kicked from the chat!")
+        data = get_pkt(user + " has been kicked from the chat!")
         open_client_sockets.remove(current_socket)
         users.remove((user, current_socket))
         current_socket.close()
@@ -128,7 +128,6 @@ def main():
     server_socket = socket.socket()
     server_socket.bind(('0.0.0.0', IP_SERVER))
     server_socket.listen(5)
-    managers.append("asd")  # asd is a manager
     while True:
         rlist, wlist, xlist = select.select([server_socket] + open_client_sockets, open_client_sockets, [])
         for current_socket in rlist:
@@ -150,19 +149,22 @@ def main():
                         send_to_sockets(current_socket, open_client_sockets, data)
                         print("Connection with " + user + " closed")
                 elif only_user(data):  # format:0004asdf, to match between user and socket
-                    users.append((exstract_user(data), current_socket))
+                    user = exstract_user(data)
+                    if not managers:
+                        managers.append(user)
+                    users.append((user, current_socket))
                 else:
                     opcode, user, msg = exstract_msg(data)
                     if msg == "quit\r" and opcode == 1:
                         data = quit_user(current_socket, user, opcode)
                     elif opcode == 3:
                         msg = msg[:-1]
-                        soc, check = get_socket(msg) #msg == user he wants to kick is real.
-                        if user in managers and check:
-                            data = quit_user(soc, msg, opcode) #kick the user
+                        soc, check = get_socket(msg)  # msg == user he wants to kick is real.
+                        if user in managers and check and user != msg:
+                            data = quit_user(soc, msg, opcode)  # kick the user
+                            current_socket = -1  # send to all users
                         else:
                             data = get_regular_msg(user, msg)
-                            current_socket = -1  #to send everybody including the sender
                     send_to_sockets(current_socket, open_client_sockets, data)
         send_waiting_messages(wlist)
 
