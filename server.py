@@ -10,13 +10,24 @@ managers = []
 
 
 def send_to_sockets(except_socket, open_client_sockets, data):
+    """
+    send to all sockets except the socket that is indicated
+    :param except_socket: the socket that you should not to send
+    :param open_client_sockets: the sockets list
+    :param data: the message to be sent
+    :return: none
+    """
     for current_socket in open_client_sockets:
         if current_socket != except_socket:
             messages_to_send.append((current_socket, data))
 
 
 def send_waiting_messages(wlist):
-    '''sends waiting messages that need to be sent, only if the client's socket is writeable'''
+    """
+    sends waiting messages that need to be sent, only if the client's socket is writeable
+    :param wlist: the socket that can be wrote
+    :return: none
+    """
     for message in messages_to_send:
         client_socket, data = message
         if client_socket in wlist:
@@ -62,6 +73,11 @@ def get_pkt(msg):
 
 
 def get_socket(current_user):
+    """
+    get socket from user name
+    :param current_user: user name
+    :return: correspond socket and true or false if exists one
+    """
     for user in users:
         name, socket = user
         if name == current_user:
@@ -70,6 +86,11 @@ def get_socket(current_user):
 
 
 def get_user(current_socket):
+    """
+    get user name from socket
+    :param current_socket: socket
+    :return: correspond user name and true or false if exists one
+    """
     for user in users:
         name, socket = user
         if socket == current_socket:
@@ -113,6 +134,11 @@ def only_user(data):
 
 
 def exstract_user(data):
+    """
+    exstract the user name from the msg
+    :param data: packet that be sent
+    :return: the user name who sent it
+    """
     user_len = int(data[:4])
     return data[4:user_len + 4]
 
@@ -186,7 +212,6 @@ def main():
                             managers.append(msg)
                             data = get_pkt(msg + " become a manager!!!")
                             current_socket = -1  # send to everyone
-
                     elif opcode == 3:
                         msg = msg[:-1]
                         soc, check = get_socket(msg)  # msg == user he wants to kick is real.
