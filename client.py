@@ -11,6 +11,13 @@ user_name = ''
 
 
 def prints(hour, username, content):
+    """
+    print the msg in this form, hour name: data
+    :param hour: the date
+    :param username: the name of the sender
+    :param content: the text message
+    :return: none
+    """
     print(hour+" " + username + ": " + content)
 
 
@@ -19,10 +26,26 @@ def get_response(data):
         ch = msvcrt.getch().decode()
         data += ch
         if ch == '\r':
-            hour = datetime.datetime.now().strftime("%H:%M")  # without space between the time and the msg
-            if data != "quit\r":
+            if data[0] == '/': #command for the system
+                cmd = data[1:]
+                hour = datetime.datetime.now().strftime("%H:%M")
                 prints(hour, "you", data)
-            return True, hour+data
+                if cmd == "help\r":
+                    hour = datetime.datetime.now().strftime("%H:%M")
+                    prints(hour, "system", "/help: see all the commands \n "
+                                           "/manager x: try to turn x to a manager (work only if you are a manager) \n")
+
+                elif cmd[:8] == "manager " and len(cmd) > 9:  # try to turn someone to a manager.
+                    return True, data
+                else:  # the command isn't found.
+                    hour = datetime.datetime.now().strftime("%H:%M")
+                    prints(hour, "system", "there isn't such a command")
+                return False, ""
+            else:
+                hour = datetime.datetime.now().strftime("%H:%M")
+                if data != "quit\r":
+                    prints(hour, "you", data)
+                return True, hour+data
     return False, data
 
 
@@ -36,9 +59,13 @@ def get_name():
     return p.encode()
 
 
-def get_pkt(msg, op): #support opcode 1,3
+def get_pkt(msg, op): #support opcode 1,2,3
     if op == 1:
         p = str(len(user_name)).zfill(4) + user_name + str(op) + str(len(msg)).zfill(4) + msg
+        return p.encode()
+    elif op == 2:
+        user = msg[9:-1]
+        p = str(len(user_name)).zfill(4) + user_name + str(op) + str(len(user)).zfill(4) + user
         return p.encode()
     elif op == 3:
         user = msg[10:]
@@ -85,6 +112,8 @@ def main():
                 opcode = 1
                 if msg1[5:10] == "kick ":
                     opcode = 3
+                if msg1[0] == '/':  # commands system
+                    opcode = 2
                 my_socket.send(get_pkt(msg1, opcode))
                 message_to_send.remove(msg1)
                 if msg1[5:] == "quit\r":

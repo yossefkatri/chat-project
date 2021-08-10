@@ -40,13 +40,22 @@ def exstract_msg(data):
         len = int(data[user_len + 5:user_len + 9])
         msg = data[user_len + 9:user_len + 9 + len]
         return 1, sender, msg
-    if opcode == 3:
+    elif opcode == 2:
+        len = int(data[user_len + 5:user_len + 9])
+        user = data[user_len + 9:user_len + 9 + len]
+        return 2, sender, user
+    elif opcode == 3:
         len = int(data[user_len + 5:user_len + 9])
         user = data[user_len + 9:user_len + 9 + len]
         return 3, sender, user
 
 
 def get_pkt(msg):
+    """
+    make a server message that will send everyone.
+    :param msg: the message
+    :return: the packet that should be sent
+    """
     msg = datetime.datetime.now().strftime("%H:%M ") + msg
     p = str(len(msg)).zfill(4) + msg
     return p
@@ -166,18 +175,24 @@ def main():
                     users.append((user, current_socket))
                 else:
                     opcode, user, msg = exstract_msg(data)
-                    time = msg[:5]
-                    msg = msg[5:]
-                    if msg == "quit\r" and opcode == 1:
+                    if msg[5:] == "quit\r" and opcode == 1:
                         data = quit_user(current_socket, user, opcode)
-                    elif opcode == 1 and user in managers:
-                        data = mannger_msg(user, msg, time)
+                    elif opcode == 1 and user in managers:  # should insert '@' before the name
+                        time = msg[:5]
+                        data = mannger_msg(user, msg[5:], time)
+                    elif opcode == 2 and user in managers:  # if manager wants to ordain someone to be a manager
+                        soc, check = get_socket(msg)  # msg == user he wants to ordain is real.
+                        if check and user != msg:
+                            managers.append(msg)
+                            data = get_pkt(msg + " become a manager!!!")
+                            current_socket = -1  # send to everyone
+
                     elif opcode == 3:
                         msg = msg[:-1]
                         soc, check = get_socket(msg)  # msg == user he wants to kick is real.
                         if user in managers and check and user != msg:
                             data = quit_user(soc, msg, opcode)  # kick the user
-                            current_socket = -1  # send to all users
+                            current_socket = -1  # send to everyone
                         else:
                             data = get_regular_msg(user, msg)
                     send_to_sockets(current_socket, open_client_sockets, data)
