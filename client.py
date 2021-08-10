@@ -29,6 +29,8 @@ def get_response(data):
 def get_name():
     global user_name
     name = input("enter user-name:")
+    while name[0] =='@':
+        name = input("your name cant start with '@' ,enter user-name:")
     p = str(len(name)).zfill(4)+name
     user_name = name
     return p.encode()
