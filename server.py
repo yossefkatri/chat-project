@@ -5,6 +5,7 @@ import datetime
 IP_SERVER = 8080
 open_client_sockets = []
 users = []
+silence_users = []
 messages_to_send = []
 managers = []
 
@@ -51,10 +52,10 @@ def exstract_msg(data):
         len = int(data[user_len + 5:user_len + 9])
         msg = data[user_len + 9:user_len + 9 + len]
         return 1, sender, msg
-    elif opcode == 2:
+    elif opcode == 2 or opcode == 4 or opcode == 6:
         len = int(data[user_len + 5:user_len + 9])
         user = data[user_len + 9:user_len + 9 + len]
-        return 2, sender, user
+        return opcode, sender, user
     elif opcode == 3:
         len = int(data[user_len + 5:user_len + 9])
         user = data[user_len + 9:user_len + 9 + len]
@@ -157,6 +158,7 @@ def get_regular_msg(sender, msg):
     p = str(len(sender)).zfill(4) + sender + str(1) + str(len(msg)).zfill(4) + msg
     return p
 
+
 def mannger_msg(mannger, msg, time):
     """
     put into the user name the '@' character.
@@ -201,7 +203,7 @@ def main():
                     users.append((user, current_socket))
                 else:
                     opcode, user, msg = exstract_msg(data)
-                    if msg[5:] == "quit\r" and opcode == 1:
+                    if msg[5:] == "quit\r" and opcode == 1:   # if user wants to quit
                         data = quit_user(current_socket, user, opcode)
                     elif opcode == 1 and user in managers:  # should insert '@' before the name
                         time = msg[:5]
@@ -220,7 +222,22 @@ def main():
                             current_socket = -1  # send to everyone
                         else:
                             data = get_regular_msg(user, msg)
-                    send_to_sockets(current_socket, open_client_sockets, data)
+                    elif opcode == 4 and user in managers:  # if manager try to silence a user.
+                        soc, check = get_socket(msg)  # msg == user he wants to silence is real.
+                        if check:
+                            silence_users.append(msg)
+                            data = get_pkt(msg + " is silenced by "+user)
+                            current_socket = -1  # send to everyone
+                    elif opcode == 6 and user in managers:  # if manager try to un-silence a user.
+                        soc, check = get_socket(msg)  # msg == user he wants to un-silence is real.
+                        if check and msg in silence_users:  # if the user exists and the user was silenced
+                            silence_users.remove(msg)
+                            data = get_pkt(msg + " is un-silenced by "+user)
+                            current_socket = -1  # send to everyone
+                    if user not in silence_users or opcode != 1 or (msg[5:] == "quit\r" and opcode == 1):
+                        send_to_sockets(current_socket, open_client_sockets, data)
+                    else:
+                        messages_to_send.append((current_socket, get_pkt("You can't speak here")))
         send_waiting_messages(wlist)
 
 
