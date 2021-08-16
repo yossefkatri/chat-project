@@ -35,13 +35,23 @@ def get_response(data):
                     prints(hour, "system", "/help: see all the commands \n "
                                            "/manager x: try to turn x to a manager (work only if you are a manager) \n"
                                            "/silence x: try to silence x (work only if you are a manager) \n"
-                                           "/un-silence x: try to un-silence x (work only if you are a manager) \n")
-
+                                           "/un-silence x: try to un-silence x (work only if you are a manager) \n"
+                                           "/private x y: send to x the message y \n"
+                                           "/view-managers: see all the managers \n")
                 elif cmd[:8] == "manager " and len(cmd) > 9:  # try to turn someone to a manager.
                     return True, data
                 elif cmd[:8] == "silence " and len(cmd) > 9:  # try to silence someone
                     return True, data
                 elif cmd[:11] == "un-silence " and len(cmd) > 12:  # try to un-silence someone
+                    return True, data
+                elif cmd[:8] == "private " and len(cmd) > 11:  # try to send a private message
+                    if len(cmd.split()) >= 3:
+                        return True, data
+                    else:
+                        hour = datetime.datetime.now().strftime("%H:%M")
+                        prints(hour, "system", "you need to enter the message")
+                        return False, ""
+                elif cmd[:-1] == "view-managers":
                     return True, data
                 else:  # the command isn't found.
                     hour = datetime.datetime.now().strftime("%H:%M")
@@ -55,7 +65,7 @@ def get_response(data):
     return False, data
 
 
-def get_name( ):
+def get_name():
     global user_name
     name = input("enter user-name:")
     while name[0] == '@':
@@ -65,7 +75,7 @@ def get_name( ):
     return p.encode()
 
 
-def get_pkt(msg, op):  # support opcode 1,2,3,4,6
+def get_pkt(msg, op):  # support opcode 1,2,3,4,5,6
     if op == 1:
         p = str(len(user_name)).zfill(4) + user_name + str(op) + str(len(msg)).zfill(4) + msg
         return p.encode()
@@ -80,6 +90,16 @@ def get_pkt(msg, op):  # support opcode 1,2,3,4,6
     elif op == 3:
         user = msg[10:]
         p = str(len(user_name)).zfill(4) + user_name + str(op) + str(len(user)).zfill(4) + user
+        return p.encode()
+    elif op == 5:
+        ls = msg.split()  # ['private','x','y'...]
+        hour = datetime.datetime.now().strftime("%H:%M")
+        rec = ls[1]
+        message = hour + (' '.join(ls[2:]))[:-1]
+        p = str(len(user_name)).zfill(4) + user_name + str(op) + str(len(rec)).zfill(4) + rec + str(len(message)).zfill(4) + message
+        return p.encode()
+    elif op == 7:
+        p = str(len(user_name)).zfill(4) + user_name + str(op)
         return p.encode()
 
 
@@ -97,6 +117,15 @@ def print_pkt(data):  # format: 0003 asd 0008 16:02 ffg
             hour = msg[:5]
             msg = msg[5:]
             prints(hour, user, msg)
+        elif opcode == 5:
+            len1 = int(data[user_len + 5:user_len + 9])
+            rec = data[user_len+9: user_len+9+len1]
+            len_msg = int(data[user_len+9+len1:user_len+13+len1])
+            msg = data[user_len+13+len1:user_len+13+len1+len_msg]
+            hour = msg[:5]
+            msg = msg[5:]
+            if user_name == rec:
+                prints(hour, "!"+user, msg)
 
 
 def main():
@@ -129,6 +158,10 @@ def main():
                         opcode = 4
                     elif msg1[1:12] == "un-silence ":
                         opcode = 6
+                    elif msg1[1:9] == "private ":
+                        opcode = 5
+                    elif msg1[1:-1] == "view-managers":
+                        opcode = 7
                 my_socket.send(get_pkt(msg1, opcode))
                 message_to_send.remove(msg1)
                 if msg1[5:] == "quit\r":

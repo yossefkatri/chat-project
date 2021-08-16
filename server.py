@@ -60,6 +60,14 @@ def exstract_msg(data):
         len = int(data[user_len + 5:user_len + 9])
         user = data[user_len + 9:user_len + 9 + len]
         return 3, sender, user
+    elif opcode == 5:
+        len = int(data[user_len + 5:user_len + 9])
+        user = data[user_len + 9:user_len + 9 + len]
+        len_msg = int(data[user_len + 9 + len:user_len + 13 + len])
+        msg = data[user_len + 13 + len:user_len + 13 + len + len_msg]
+        return 5, sender, (user, msg)
+    elif opcode == 7:
+        return 7, sender, None
 
 
 def get_pkt(msg):
@@ -108,6 +116,8 @@ def quit_user(current_socket, user, op):
     :param op: opcode
     :return: the message that the server should send
     """
+    if user in managers:
+        managers.remove(user)
     if op == 1:
         data = get_pkt(user + " has left the chat!")
         open_client_sockets.remove(current_socket)
@@ -193,6 +203,8 @@ def main():
                     user, ok = get_user(current_socket)
                     if ok:  # we found the socket
                         users.remove((user, current_socket))
+                        if user in managers:
+                            managers.remove(user)
                         data = get_pkt(user + " has left the chat!")
                         send_to_sockets(current_socket, open_client_sockets, data)
                         print("Connection with " + user + " closed")
@@ -202,10 +214,12 @@ def main():
                         managers.append(user)
                     users.append((user, current_socket))
                 else:
+                    send_flag = True
                     opcode, user, msg = exstract_msg(data)
-                    if msg[5:] == "quit\r" and opcode == 1:   # if user wants to quit
-                        data = quit_user(current_socket, user, opcode)
-                    elif opcode == 1 and user in managers:  # should insert '@' before the name
+                    if opcode == 1:   # if user wants to quit
+                        if msg[5:] == "quit\r":
+                            data = quit_user(current_socket, user, opcode)
+                    if opcode == 1 and user in managers:  # should insert '@' before the name
                         time = msg[:5]
                         data = mannger_msg(user, msg[5:], time)
                     elif opcode == 2 and user in managers:  # if manager wants to ordain someone to be a manager
@@ -214,6 +228,8 @@ def main():
                             managers.append(msg)
                             data = get_pkt(msg + " become a manager!!!")
                             current_socket = -1  # send to everyone
+                        else:
+                            send_flag = False
                     elif opcode == 3:
                         msg = msg[:-1]
                         soc, check = get_socket(msg)  # msg == user he wants to kick is real.
@@ -228,14 +244,29 @@ def main():
                             silence_users.append(msg)
                             data = get_pkt(msg + " is silenced by "+user)
                             current_socket = -1  # send to everyone
+                        else:
+                            send_flag = False
                     elif opcode == 6 and user in managers:  # if manager try to un-silence a user.
                         soc, check = get_socket(msg)  # msg == user he wants to un-silence is real.
                         if check and msg in silence_users:  # if the user exists and the user was silenced
                             silence_users.remove(msg)
                             data = get_pkt(msg + " is un-silenced by "+user)
                             current_socket = -1  # send to everyone
-                    if user not in silence_users or opcode != 1 or (msg[5:] == "quit\r" and opcode == 1):
-                        send_to_sockets(current_socket, open_client_sockets, data)
+                        else:
+                            send_flag = False
+                    if opcode == 7:
+                        msg = "managers: "+", ".join(managers)
+                        messages_to_send.append((current_socket, get_pkt(msg)))
+                    elif opcode == 5:  # if user wants to send a private message
+                        rec, msg = msg
+                        soc, check = get_socket(rec)  # if the user is real.
+                        if check:
+                            messages_to_send.append((soc, data))
+                        else:
+                            messages_to_send.append((current_socket, get_pkt("the server can't find the user")))
+                    elif user not in silence_users or opcode != 1 or (msg[5:] == "quit\r" and opcode == 1):
+                        if send_flag:
+                            send_to_sockets(current_socket, open_client_sockets, data)
                     else:
                         messages_to_send.append((current_socket, get_pkt("You can't speak here")))
         send_waiting_messages(wlist)
