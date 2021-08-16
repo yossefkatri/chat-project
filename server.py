@@ -230,6 +230,7 @@ def main():
                             current_socket = -1  # send to everyone
                         else:
                             send_flag = False
+                            messages_to_send.append((current_socket, get_pkt("The server can't find the user or the user is you")))
                     elif opcode == 3:
                         msg = msg[:-1]
                         soc, check = get_socket(msg)  # msg == user he wants to kick is real.
@@ -246,6 +247,7 @@ def main():
                             current_socket = -1  # send to everyone
                         else:
                             send_flag = False
+                            messages_to_send.append((current_socket, get_pkt("The server can't find the user")))
                     elif opcode == 6 and user in managers:  # if manager try to un-silence a user.
                         soc, check = get_socket(msg)  # msg == user he wants to un-silence is real.
                         if check and msg in silence_users:  # if the user exists and the user was silenced
@@ -254,6 +256,7 @@ def main():
                             current_socket = -1  # send to everyone
                         else:
                             send_flag = False
+                            messages_to_send.append((current_socket, get_pkt("The server can't find the user or the user isn't silenced")))
                     if opcode == 7:
                         msg = "managers: "+", ".join(managers)
                         messages_to_send.append((current_socket, get_pkt(msg)))
